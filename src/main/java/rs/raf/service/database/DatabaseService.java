@@ -3,7 +3,6 @@ package rs.raf.service.database;
 import rs.raf.controler.dto.RequestDTO;
 import rs.raf.controler.dto.UpdateDTO;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 

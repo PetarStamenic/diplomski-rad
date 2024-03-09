@@ -1,7 +1,6 @@
 package rs.raf.service.clas;
 
 import org.springframework.stereotype.Service;
-import rs.raf.service.ClasGenerator;
 
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;

@@ -7,7 +7,7 @@ import rs.raf.controler.dto.CreateDatabaseDTO;
 import rs.raf.controler.dto.RequestDTO;
 import rs.raf.controler.dto.UpdateDTO;
 import rs.raf.service.clas.ClasFinder;
-import rs.raf.service.ClasGenerator;
+import rs.raf.service.clas.ClasGenerator;
 import rs.raf.service.database.DatabaseService;
 
 import java.util.ArrayList;
@@ -30,11 +30,10 @@ public class DatabaseControler {
     @PutMapping("/createtable/{tableName}")
     public ResponseEntity<String > createTable(@PathVariable(value = "tableName")String tableName, @RequestBody List<CreateDatabaseDTO> createDatabaseDTOS){
         HashMap<String ,String> fields = new HashMap<>();
-        createDatabaseDTOS.forEach(createDatabaseDTO -> {
-            fields.put(createDatabaseDTO.getName(),createDatabaseDTO.getType());
-        });
-        clasGenerator.generateClass(tableName,fields);
-        return new ResponseEntity<>(HttpStatus.OK);
+        createDatabaseDTOS.forEach(createDatabaseDTO -> fields.put(createDatabaseDTO.getName(),createDatabaseDTO.getType()));
+        if(clasGenerator.generateClass(tableName,fields))
+            return new ResponseEntity<>(HttpStatus.OK);
+        return new ResponseEntity<>(HttpStatus.CONFLICT);
     }
 
     @PostMapping("/{database}/{table}")
@@ -122,7 +121,7 @@ public class DatabaseControler {
                 updateDTOS.add(new UpdateDTO(updates.split("=")[0],updates.split("=")[1].split("<>")[0],updates.split("=")[1].split("<>")[1]));
             }
             for(String st:hm){
-                updateDTOS.add(new UpdateDTO(updates.split("=")[0],updates.split("=")[1].split("<>")[0],updates.split("=")[1].split("<>")[1]));
+                updateDTOS.add(new UpdateDTO(st.split("=")[0],st.split("=")[1].split("<>")[0],st.split("=")[1].split("<>")[1]));
             }
             return updateDTOS;
         }catch (Exception e){

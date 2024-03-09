@@ -4,7 +4,6 @@ import org.springframework.stereotype.Service;
 import rs.raf.controler.dto.RequestDTO;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.util.*;
 
@@ -21,7 +20,7 @@ public class ClasFinderImplementation implements ClasFinder {
 
     @Override
     public List<Field> findAllFieldsFromClass(String name) {
-        List<Field> classFields = new ArrayList<>();
+        List<Field> classFields;
         Class c = findClas(name);
         if(c == null)
             return null;
@@ -45,7 +44,7 @@ public class ClasFinderImplementation implements ClasFinder {
 
     @Override
     public Object getClassObjectFromNameAndLinkedHashMap(String name, LinkedHashMap hashMap) {
-        Object o = null;
+        Object o;
         try {
             o = findClas(name).getDeclaredConstructor().newInstance();
         } catch (Exception e) {
@@ -60,7 +59,7 @@ public class ClasFinderImplementation implements ClasFinder {
                 return null;
             }
             try {
-                Object value = null;
+                Object value;
                 if(getValueFromClassField(name,(String) key) == Long.class) {
                     value = Integer.class.cast(hashMap.get(key)).longValue();
                 }else {
@@ -68,11 +67,7 @@ public class ClasFinderImplementation implements ClasFinder {
                 }
                 o.getClass().getMethod("set"+((String) key).substring(0,1).toUpperCase()+((String) key).substring(1),value.getClass()).invoke(o,value);
 
-            } catch (NoSuchMethodException e) {
-                throw new RuntimeException(e);
-            } catch (InvocationTargetException e) {
-                throw new RuntimeException(e);
-            } catch (IllegalAccessException e) {
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
@@ -83,22 +78,20 @@ public class ClasFinderImplementation implements ClasFinder {
     @Override
     public Object getClassEntityFromNameAndJson(String name,String json) {
         LinkedHashMap<String,String> hashMap = mapFromString(json);
-        Object o = null;
+        Object o;
         try {
             o = findClas(name).getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         for(String key: hashMap.keySet()){
-            if(!(key instanceof String))
-                return null;
             try {
                 o.getClass().getDeclaredField(key);
             } catch (NoSuchFieldException e) {
                 return null;
             }
             try {
-                Object value = null;
+                Object value;
                 Class type = getValueFromClassField(name,key);
                 if(type == Long.class) {
                     value = Long.parseLong(hashMap.get(key));
@@ -113,13 +106,9 @@ public class ClasFinderImplementation implements ClasFinder {
                 }else {
                     value = hashMap.get(key);
                 }
-                o.getClass().getMethod("set"+((String) key).substring(0,1).toUpperCase()+((String) key).substring(1),value.getClass()).invoke(o,value);
+                o.getClass().getMethod("set"+key.substring(0,1).toUpperCase()+key.substring(1),value.getClass()).invoke(o,value);
 
-            } catch (NoSuchMethodException e) {
-                throw new RuntimeException(e);
-            } catch (InvocationTargetException e) {
-                throw new RuntimeException(e);
-            } catch (IllegalAccessException e) {
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
@@ -134,7 +123,7 @@ public class ClasFinderImplementation implements ClasFinder {
             try {
                 if(!(o.getClass().getDeclaredField(request.getField()).getName().equals(request.getField())))
                     return false;
-                if(!(o.getClass().getMethod("get"+((String) request.getField()).substring(0,1).toUpperCase()+((String) request.getField()).substring(1)).invoke(o).toString().equals(request.getValue())))
+                if(!(o.getClass().getMethod("get"+request.getField().substring(0,1).toUpperCase()+request.getField().substring(1)).invoke(o).toString().equals(request.getValue())))
                     return false;
             } catch (Exception e) {
                 return false;
@@ -151,7 +140,7 @@ public class ClasFinderImplementation implements ClasFinder {
             try {
                 if(!(o.getClass().getDeclaredField(request.getField()).getName().equals(request.getField())))
                     return false;
-                if(o.getClass().getMethod("get"+((String) request.getField()).substring(0,1).toUpperCase()+((String) request.getField()).substring(1)).invoke(o).toString().equals(request.getValue()))
+                if(o.getClass().getMethod("get"+request.getField().substring(0,1).toUpperCase()+ request.getField().substring(1)).invoke(o).toString().equals(request.getValue()))
                     return true;
             } catch (Exception e) {
                 return false;

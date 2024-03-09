@@ -25,7 +25,7 @@ public class DatabaseServiceImplementation implements DatabaseService{
     @Override
     public boolean saveObjectToDatabaseToTable(String database, String name, LinkedHashMap entity) {
         String json = "";
-        String pk = "";
+        String pk;
         long max = 0;
         long curr;
         FileWriter fileWriter = null;

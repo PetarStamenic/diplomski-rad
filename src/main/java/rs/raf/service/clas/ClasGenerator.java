@@ -1,7 +1,7 @@
-package rs.raf.service;
+package rs.raf.service.clas;
 
 import java.util.HashMap;
 
 public interface ClasGenerator {
-    public boolean generateClass(String name,HashMap<String ,String> fields);
+    boolean generateClass(String name,HashMap<String ,String> fields);
 }
