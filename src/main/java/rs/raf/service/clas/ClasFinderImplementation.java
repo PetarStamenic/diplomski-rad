@@ -61,6 +61,7 @@ public class ClasFinderImplementation implements ClasFinder {
             try {
                 Object value;
                 if(getValueFromClassField(name,(String) key) == Long.class) {
+                    System.out.println(hashMap.get(key));
                     value = Integer.class.cast(hashMap.get(key)).longValue();
                 }else {
                     value = getValueFromClassField(name, (String) key).cast(hashMap.get(key));
@@ -123,7 +124,8 @@ public class ClasFinderImplementation implements ClasFinder {
             try {
                 if(!(o.getClass().getDeclaredField(request.getField()).getName().equals(request.getField())))
                     return false;
-                if(!(o.getClass().getMethod("get"+request.getField().substring(0,1).toUpperCase()+request.getField().substring(1)).invoke(o).toString().equals(request.getValue())))
+                if(!(o.getClass().getMethod("get"+request.getField().substring(0,1).toUpperCase()
+                        +request.getField().substring(1)).invoke(o).toString().equals(request.getValue())))
                     return false;
             } catch (Exception e) {
                 return false;
@@ -140,7 +142,8 @@ public class ClasFinderImplementation implements ClasFinder {
             try {
                 if(!(o.getClass().getDeclaredField(request.getField()).getName().equals(request.getField())))
                     return false;
-                if(o.getClass().getMethod("get"+request.getField().substring(0,1).toUpperCase()+ request.getField().substring(1)).invoke(o).toString().equals(request.getValue()))
+                if(o.getClass().getMethod("get"+request.getField().substring(0,1).toUpperCase()
+                        + request.getField().substring(1)).invoke(o).toString().equals(request.getValue()))
                     return true;
             } catch (Exception e) {
                 return false;

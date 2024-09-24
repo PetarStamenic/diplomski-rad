@@ -1,7 +1,0 @@
-{
-"ime":"milan",
-"prezime":"marinkovic",
-"smer":"rn",
-"godine":"100",
-"id":"1"
-}

@@ -12,4 +12,11 @@ import lombok.Setter;
 public class CreateDatabaseDTO {
     private String name;
     private String type;
+    private String property;
 }
+
+/*
+id
+unique
+notnull
+ */

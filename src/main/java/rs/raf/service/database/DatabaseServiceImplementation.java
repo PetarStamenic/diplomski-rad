@@ -1,13 +1,19 @@
 package rs.raf.service.database;
 
 import org.springframework.stereotype.Service;
+import rs.raf.annotations.Default;
+import rs.raf.annotations.Id;
+import rs.raf.annotations.NotNull;
+import rs.raf.annotations.Unique;
 import rs.raf.controler.dto.RequestDTO;
 import rs.raf.controler.dto.UpdateDTO;
 import rs.raf.service.clas.ClasFinder;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -22,30 +28,17 @@ public class DatabaseServiceImplementation implements DatabaseService{
         this.clasFinder = clasFinder;
     }
 
+
+
     @Override
-    public boolean saveObjectToDatabaseToTable(String database, String name, LinkedHashMap entity) {
+    public boolean saveObjectToDatabaseToTable(String database, String name, LinkedHashMap entity) throws Exception{
         String json = "";
-        String pk;
+        String pk = null;
         long max = 0;
         long curr;
         FileWriter fileWriter = null;
         File file;
         try {
-            File theDir = new File("src/main/resources/Databases/"+database+"/"+name);
-            if (!theDir.exists()){
-                theDir.mkdirs();
-            }
-            file = new File("src/main/resources/Databases/"+database+"/"+name);
-            if(file.isDirectory()){
-                for (File f: Objects.requireNonNull(file.listFiles())){
-                    curr = Integer.parseInt(f.getName().replace(".txt",""));
-                    if(curr > max){
-                        max = curr;
-                    }
-                }
-                max++;
-            }
-            pk = String.valueOf(max);
 
             json += "{";
             json += newRow;
@@ -58,11 +51,53 @@ public class DatabaseServiceImplementation implements DatabaseService{
                     String fieldValue = null;
                     if (field.get(o) != null)
                         fieldValue = field.get(o).toString();
-                    if (fieldName.equalsIgnoreCase("id")) {
-                        if (fieldValue == null)
-                            fieldValue = pk;
+                    if(field.isAnnotationPresent(Id.class)) {
+                        if (fieldValue == null) {
+                            if (field.getType() == Integer.class || field.getType() == Long.class
+                                    || field.getType() == int.class || field.getType() == long.class) {
+                                File theDir = new File("src/main/resources/Databases/" + database + "/" + name);
+                                if (!theDir.exists()) {
+                                    theDir.mkdirs();
+                                }
+                                file = new File("src/main/resources/Databases/" + database + "/" + name);
+                                if (file.isDirectory()) {
+                                    for (File f : Objects.requireNonNull(file.listFiles())) {
+                                        curr = Integer.parseInt(f.getName().replace(".txt", ""));
+                                        if (curr > max) {
+                                            max = curr;
+                                        }
+                                    }
+                                    max++;
+                                }
+                                fieldValue = String.valueOf(max);
+                            }
+                        }
                         pk = fieldValue;
                     }
+
+
+                    if(field.isAnnotationPresent(Default.class)){
+                        if(fieldValue == null)
+                            fieldValue = field.getAnnotation(Default.class).value();
+                    }
+                    if(field.isAnnotationPresent(NotNull.class)){
+                        if(fieldValue == null)
+                            throw new Exception("field "+field.getName()+" must not be null");
+                    }
+
+                    if(field.isAnnotationPresent(Unique.class)){
+                        List<Object> objects = listAllFromTable(database,name);
+                        for(Object object:objects){
+                            try {
+                                Field f = object.getClass().getDeclaredField(field.getName());
+                                f.setAccessible(true);
+                                if(f.get(object).equals(field.get(o)))
+                                    throw new Exception("filed "+fieldName+" must be unique");
+                            } catch (NoSuchFieldException | IllegalAccessException ignore){}
+                        }
+                    }
+
+
                         json += "\"" + fieldName + "\":\"" + fieldValue + "\"," + newRow;
                 }catch (IllegalAccessException i) {
                     throw new RuntimeException(i);
@@ -72,6 +107,8 @@ public class DatabaseServiceImplementation implements DatabaseService{
             json = json.substring(0,pos);
             json += newRow;
             json += "}";
+            if(pk == null)
+                throw new Exception("id cannot be empty in non numeric fields");
             File newFile = new File("src/main/resources/Databases/"+database+"/"+name+"/"+pk+".txt");
             if(newFile.exists())
                 return false;
@@ -81,19 +118,21 @@ public class DatabaseServiceImplementation implements DatabaseService{
                 fileWriter.close();
                 return true;
             }
-        }catch (Exception e){
+        }catch (IOException e){
             e.printStackTrace();
         }finally {
             try {
                 if (fileWriter != null) {
                     fileWriter.close();
                 }
-            }catch (Exception ignore){}
+            }catch (IOException ignore){}
         }return false;
     }
 
+
     @Override
-    public List<Object> findObjectByDatabaseAndTableAndFieldNameAndValue(String database,String tableName, List<RequestDTO> requestDTOS) {
+    public List<Object> findObjectByDatabaseAndTableAndFieldNameAndValue(String database,String tableName,
+                                                                         List<RequestDTO> requestDTOS) {
         File file;
         List<Object> list = new ArrayList<>();
         try {
@@ -118,7 +157,8 @@ public class DatabaseServiceImplementation implements DatabaseService{
     }
 
     @Override
-    public List<Object> findObjectByDatabaseAndTableAndFieldNameOrValue(String database,String tableName, List<RequestDTO> requestDTOS) {
+    public List<Object> findObjectByDatabaseAndTableAndFieldNameOrValue(String database,String tableName,
+                                                                        List<RequestDTO> requestDTOS) {
         File file;
         List<Object> list = new ArrayList<>();
         try {
@@ -144,7 +184,10 @@ public class DatabaseServiceImplementation implements DatabaseService{
 
 
     @Override
-    public List<Object> updateObjectByDatabaseAndTableAndFieldNameAndValueWithOldValueAndNewValue(String database, String tableName, List<RequestDTO> requestDTOS, List<UpdateDTO> updateDTOS) {
+    public List<Object> updateObjectByDatabaseAndTableAndFieldNameAndValueWithOldValueAndNewValue(String database,
+                                                                                                  String tableName,
+                                                                                                  List<RequestDTO> requestDTOS,
+                                                                                                  List<UpdateDTO> updateDTOS) throws Exception{
         List<Object> objects = findObjectByDatabaseAndTableAndFieldNameAndValue(database,tableName,requestDTOS);
         List<Object> updates = new ArrayList<>();
         for(Object o:objects){
@@ -156,7 +199,10 @@ public class DatabaseServiceImplementation implements DatabaseService{
     }
 
     @Override
-    public List<Object> updateObjectByDatabaseAndTableAndFieldNameOrValueWithOldValueAndNewValue(String database, String tableName, List<RequestDTO> requestDTOS, List<UpdateDTO> updateDTOS) {
+    public List<Object> updateObjectByDatabaseAndTableAndFieldNameOrValueWithOldValueAndNewValue(String database,
+                                                                                                 String tableName,
+                                                                                                 List<RequestDTO> requestDTOS,
+                                                                                                 List<UpdateDTO> updateDTOS) throws Exception{
         List<Object> objects = findObjectByDatabaseAndTableAndFieldNameOrValue(database,tableName,requestDTOS);
         List<Object> updates = new ArrayList<>();
         for(Object o:objects){
@@ -166,7 +212,8 @@ public class DatabaseServiceImplementation implements DatabaseService{
     }
 
     @Override
-    public List<Object> deleteObjectByDatabaseAndTableAndFieldNameAndValue(String database, String tableName, List<RequestDTO> requestDTOS) {
+    public List<Object> deleteObjectByDatabaseAndTableAndFieldNameAndValue(String database, String tableName,
+                                                                           List<RequestDTO> requestDTOS) {
         File file;
         try {
             File theDir = new File("src/main/resources/Databases/" + database + "/" + tableName);
@@ -192,7 +239,8 @@ public class DatabaseServiceImplementation implements DatabaseService{
     }
 
     @Override
-    public List<Object> deleteObjectByDatabaseAndTableAndFieldNameOrValue(String database, String tableName, List<RequestDTO> requestDTOS) {
+    public List<Object> deleteObjectByDatabaseAndTableAndFieldNameOrValue(String database, String tableName,
+                                                                          List<RequestDTO> requestDTOS) {
         File file;
         try {
             File theDir = new File("src/main/resources/Databases/" + database + "/" + tableName);
@@ -243,15 +291,11 @@ public class DatabaseServiceImplementation implements DatabaseService{
         return list;
     }
 
-    @Override
-    public List<Object> joinFromTableToTableByFieldFromFirstTableWithFieldFromSecondTable(String joinType, String fromTable, String toTable, String fieldNameFromFirstTable, String fieldNameFromSecondTable) {
-        //TODO - sledeci petak ovo radimo :3
-        return null;
-    }
 
 
 
-    public Object updateObjectInDatabaseInTable(String database, String name, Object object,List<UpdateDTO> updates) {
+
+    public Object updateObjectInDatabaseInTable(String database, String name, Object object,List<UpdateDTO> updates) throws Exception {
         String original = "";
         FileWriter fileWriter = null;
         File file;
@@ -260,11 +304,30 @@ public class DatabaseServiceImplementation implements DatabaseService{
             if (!theDir.exists()){
                 theDir.mkdirs();
             }
-            file = new File("src/main/resources/Databases/"+database+"/"+name+"/"+object.getClass().getDeclaredMethod("getId").invoke(object)+".txt");
+            file = new File("src/main/resources/Databases/"+database+"/"+name+"/"+object.getClass()
+                    .getDeclaredMethod("getId").invoke(object)+".txt");
             String content = new Scanner(file).useDelimiter("\\Z").next();
             original = content;
             for(UpdateDTO update:updates){
-                content = content.replace("\""+update.getField()+"\""+":"+"\""+update.getOldValue()+"\"","\""+update.getField()+"\""+":"+"\""+update.getNewValue()+"\"");
+                if(object.getClass().getDeclaredField(update.getField()).isAnnotationPresent(NotNull.class))
+                    if(update.getNewValue()==null)
+                        throw new Exception("new value cannot be Null");
+                if(object.getClass().getDeclaredField(update.getField()).isAnnotationPresent(Unique.class)){
+
+                    List<Object> objects = listAllFromTable(database,name);
+                    for(Object obj :objects){
+                        try {
+                            Field f = obj.getClass().getDeclaredField(update.getField());
+                            f.setAccessible(true);
+                            if(f.get(obj).toString().equals(update.getNewValue()))
+                                throw new Exception("filed "+f.getName()+" must be unique");
+                        } catch (NoSuchFieldException | IllegalAccessException ignore){}
+                    }
+
+
+                }
+                content = content.replace("\""+update.getField()+"\""+":"+"\""+update.getOldValue()+"\"",
+                        "\""+update.getField()+"\""+":"+"\""+update.getNewValue()+"\"");
             }
             fileWriter = new FileWriter(file.getPath());
             fileWriter.write(content);
@@ -273,14 +336,22 @@ public class DatabaseServiceImplementation implements DatabaseService{
                 return null;
             return clasFinder.getClassEntityFromNameAndJson(name,content);
 
-        }catch (Exception e){
+        }catch (IOException e){
             e.printStackTrace();
-        }finally {
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        } finally {
             try {
                 if (fileWriter != null) {
                     fileWriter.close();
                 }
-            }catch (Exception ignore){}
+            }catch (IOException ignore){}
         }return null;
     }
 
